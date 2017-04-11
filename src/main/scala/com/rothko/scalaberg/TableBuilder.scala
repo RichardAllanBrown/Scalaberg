@@ -2,22 +2,38 @@ package com.rothko.scalaberg
 
 class TableBuilder {
 
-  def buildTable(values: Seq[Seq[String]]): String = {
+  def buildTable(values: Seq[Seq[String]], options: TableBuilderOptions = TableBuilderOptions.default): String = {
     calculateColumnsNeeded(values) match {
-      case Some(colCount) => buildTableFromEven(stretchRowsToMax(values, colCount))
+      case Some(colCount) => buildTableFromEven(stretchRowsToMax(values, colCount), options)
       case None => ""
     }
   }
 
   private def stretchRowsToMax(values: Seq[Seq[String]], colCount: Int): Seq[Seq[String]] = values.map(_.padTo(colCount, ""))
 
-  private def buildTableFromEven(values: Seq[Seq[String]]) = {
+  private def buildTableFromEven(values: Seq[Seq[String]], options: TableBuilderOptions) = {
     val maxWidths = calculateMaxWidths(values)
     val sb = new StringBuilder()
 
-    sb.append(buildSeparatorRow(maxWidths))
-    values.map(r => buildDataRow(maxWidths, r)).foldLeft(sb)(_ append _)
-    sb.append(buildSeparatorRow(maxWidths))
+    if (options.breakPolicies.contains(BeforeContentBreakPolicy)) {
+      sb.append(buildSeparatorRow(maxWidths))
+    }
+
+    for ((row, index) <- values.zipWithIndex) {
+      if (options.breakPolicies.contains(BeforeRowBreakPolicy(index))) {
+        sb.append(buildSeparatorRow(maxWidths))
+      }
+
+      sb.append(buildDataRow(maxWidths, row))
+
+      if (options.breakPolicies.contains(AfterRowBreakPolicy(index))) {
+        sb.append(buildSeparatorRow(maxWidths))
+      }
+    }
+
+    if (options.breakPolicies.contains(AfterContentBreakPolicy)) {
+      sb.append(buildSeparatorRow(maxWidths))
+    }
 
     sb.toString
   }
